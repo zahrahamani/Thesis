@@ -1,11 +1,17 @@
-function [] = PNCT_plottree(T)
+function [] = PNCT_plottree(T, targetAxes)
 % PNCT_PLOTTREE  Plot a reachability / coverability tree for a Petri net.
 %   Syntax:
 %       PNCT_PLOTTREE(T)
+%       PNCT_PLOTTREE(T, AX)
 %
 %   Draws the complete reachability / coverability tree represented by the
 %   matrix T, obtained for example with T = TREE(Pre, Post, M0).
 %   This version differs from PLOTTREE1 because it does not use self-loops.
+
+    % Expose the most recently plotted tree in the base workspace so that
+    % it can be inspected or reused by higher-level viewers such as
+    % GCT_VIEWER during prototyping.
+    assignin('base', 'T_last', T);
 %
 %   NOTE:
 %       For trees with many nodes at the same depth, the markings may
@@ -16,7 +22,7 @@ function [] = PNCT_plottree(T)
 %       is also helpful.
 %
 %   Based on the TREEPLOT function
-%       (Copyright (c) 1984–97 by The MathWorks, Inc.
+%       (Copyright (c) 1984�97 by The MathWorks, Inc.
 %        $Revision: 5.7 $  $Date: 1997/04/08 06:40:28 $).
 %
 %   WARNING:
@@ -37,7 +43,15 @@ global PN
 Ps = PN.No_of_places;
 %%%%%% GPenSIM ends %%%%%%%%%%%%%%%% 
 
-clf;
+% If an axes handle is provided, draw into that axes without clearing the
+% entire figure (so UI controls can coexist). Otherwise, keep legacy
+% behaviour and clear the current figure.
+if nargin >= 2 && ~isempty(targetAxes) && ishghandle(targetAxes, 'axes')
+    axes(targetAxes); %#ok<LAXES>
+    cla(targetAxes);
+else
+    clf;
+end
 
 [m, n] = size(T);
 
@@ -199,4 +213,4 @@ return
 % Note:
 %   Helper functions PNCT_DEPTH, PNCT_TREELAY and PNCT_ADDBOX are defined
 %   in their own files (PNCT_depth.m, PNCT_treelay.m, PNCT_addbox.m) to
-%   keep PNCT_plottree.m shorter and easier to read.
+%   keep PNCT_plottree.m shorter and easier to read.....,,,,
