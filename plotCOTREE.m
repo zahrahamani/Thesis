@@ -152,6 +152,16 @@ function plotCOTREE(COTREE, startState)
         patch(Xb(:, i), Yb(:, i), nodeColors(i, :), 'EdgeColor', [0.2 0.2 0.2]);
     end
 
+    if startIdx ~= rootIdx
+        dispRoot = find(selectedParent == 0, 1, 'first');
+        if ~isempty(dispRoot)
+            yTop = y(dispRoot) + heights(dispRoot) / 2;
+            stubLen = max(0.02, min(0.06, 1.2 * heights(dispRoot)));
+            plot([x(dispRoot), x(dispRoot)], [yTop + stubLen, yTop], ...
+                'r-', 'LineWidth', 1);
+        end
+    end
+
     for i = 1:numel(selectedParent)
         label = iMarkingString(selectedMarkings(i, :), numPlaces);
         text(x(i) - length(label) * 0.0035, y(i), label, 'FontSize', 10);
