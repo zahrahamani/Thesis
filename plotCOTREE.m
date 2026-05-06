@@ -16,6 +16,7 @@ function plotCOTREE(COTREE, startState)
 %       [marking(1..P), transition_fire, parent_state, state_type]
 %   - state_type is ASCII code: R=82 (root), T=84 (terminal), D=68 (duplicate)
 %   - Display is capped to the first 30 reachable states.
+%   - A short downward red stub marks displayed nodes with hidden successors.
 
     if nargin < 1
         error('plotCOTREE:MissingInput', ...
@@ -105,6 +106,10 @@ function plotCOTREE(COTREE, startState)
     selectedTransition = transitionFire(selected);
     selectedType = stateType(selected);
     selectedMarkings = markings(selected, :);
+    hiddenSuccessor = false(numel(selected), 1);
+    for i = 1:numel(selected)
+        hiddenSuccessor(i) = any((parentState == selected(i)) & ~keepMask);
+    end
 
     mapOldToNew = zeros(numStates, 1);
     mapOldToNew(selected) = 1:numel(selected);
@@ -160,6 +165,14 @@ function plotCOTREE(COTREE, startState)
             plot([x(dispRoot), x(dispRoot)], [yTop + stubLen, yTop], ...
                 'r-', 'LineWidth', 1);
         end
+    end
+
+    hiddenNodes = find(hiddenSuccessor);
+    for ii = 1:numel(hiddenNodes)
+        i = hiddenNodes(ii);
+        yBottom = y(i) - heights(i) / 2;
+        stubLen = max(0.015, min(0.05, 0.8 * heights(i)));
+        plot([x(i), x(i)], [yBottom, yBottom - stubLen], 'r-', 'LineWidth', 1);
     end
 
     for i = 1:numel(selectedParent)
