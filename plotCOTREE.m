@@ -9,7 +9,7 @@ function plotCOTREE(COTREE, pns, startState)
 %
 % Inputs:
 %   COTREE     - Required. Matrix returned by cotree(...).
-%   pns       - Required. Petri net struct carrying place/transition names.
+%   pns        - Required. Petri net struct from pnstruct (place/transition names).
 %   startState - Optional. State definition used as root marking.
 %
 % Notes:
@@ -21,7 +21,7 @@ function plotCOTREE(COTREE, pns, startState)
 
     if nargin < 2
         error('plotCOTREE:MissingInput', ...
-            'Usage: plotCOTREE(COTREE, spng, [startState])');
+            'Usage: plotCOTREE(COTREE, pns, [startState])');
     end
 
     if nargin < 3
@@ -36,9 +36,9 @@ function plotCOTREE(COTREE, pns, startState)
         error('plotCOTREE:InvalidCOTREEType', ...
             'COTREE must be a numeric matrix returned by cotree.');
     end
-    if ~isstruct(spng)
-        error('plotCOTREE:InvalidSPNG', ...
-            'spng must be a Petri net struct returned by pnstruct/initialdynamics.');
+    if ~isstruct(pns)
+        error('plotCOTREE:InvalidPNS', ...
+            'pns must be a Petri net struct returned by pnstruct (or initialdynamics).');
     end
 
     if ~isempty(startState) && ~iscell(startState)
@@ -64,7 +64,7 @@ function plotCOTREE(COTREE, pns, startState)
     end
 
     maxTransitionIdx = max([0; transitionFire(:)]);
-    [placeNames, transNames] = iResolveNames(spng, numPlaces, maxTransitionIdx);
+    [placeNames, transNames] = iResolveNames(pns, numPlaces, maxTransitionIdx);
 
     rootIdx = find(stateType == double('R'), 1, 'first');
     if isempty(rootIdx)
@@ -314,13 +314,13 @@ function t = iPlaceTitle(placeNames)
     t = ['Places: ', strjoin(placeNames, ', ')];
 end
 
-function [placeNames, transNames] = iResolveNames(spng, numPlaces, maxTransitionIdx)
+function [placeNames, transNames] = iResolveNames(pns, numPlaces, maxTransitionIdx)
     placeNames = arrayfun(@(i) sprintf('p%d', i), 1:numPlaces, 'UniformOutput', false);
     transNames = arrayfun(@(i) sprintf('t%d', i), 1:maxTransitionIdx, 'UniformOutput', false);
 
-    p = iExtractNames(spng, {'global_places', 'places', 'place_list'}, ...
+    p = iExtractNames(pns, {'global_places', 'places', 'place_list'}, ...
         {'set_of_Ps', 'place_names', 'pnames'});
-    t = iExtractNames(spng, {'global_transitions', 'transitions', 'transition_list'}, ...
+    t = iExtractNames(pns, {'global_transitions', 'transitions', 'transition_list'}, ...
         {'set_of_Ts', 'transition_names', 'tnames'});
 
     if numel(p) >= numPlaces
