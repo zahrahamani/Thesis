@@ -20,4 +20,8 @@ dyn.ft = {'tC1',10,'tC2',10, 'tC1M1',2,'tC2M2',2,...
 pni = initialdynamics(pns, dyn);
 
 CT = cotree(pni,1,1);
-plotCOTREE(CT);
+
+% Example with custom start state
+%plotCOTREE(CT, pns, {'pC1',1,'pC2',1,'pR1',1,'pR4',1,'pi1AS',1,'pi2AS',1,'piCK',1});
+plotCOTREE(CT, pns, {'pC1',1,'pC2',1,'pOB',1,'pR1',1,'pR3',1,'pR4',1,'pi1AS',1,'pi2AS',1});
+%plotCOTREE(CT, pns)

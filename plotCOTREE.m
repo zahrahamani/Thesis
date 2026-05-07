@@ -1,29 +1,30 @@
-function plotCOTREE(COTREE, startState)
+function plotCOTREE(COTREE, pns, startState)
 % plotCOTREE Display reachability graph from COTREE matrix.
 %
-%   plotCOTREE(COTREE) displays the reachability graph starting from the
-%   initial marking represented in COTREE.
+%   plotCOTREE(COTREE, pns) displays the reachability graph starting from
+%   the initial/root marking represented in COTREE.
 %
-%   plotCOTREE(COTREE, startState) displays the reachability graph starting
-%   from the user-provided start state (marking).
+%   plotCOTREE(COTREE, pns, startState) displays the reachability graph
+%   starting from the user-provided start state (marking).
 %
 % Inputs:
 %   COTREE     - Required. Matrix returned by cotree(...).
+%   pns       - Required. Petri net struct carrying place/transition names.
 %   startState - Optional. State definition used as root marking.
 %
 % Notes:
 %   - COTREE matrix layout (GPenSIM / Davidrajuh Ch.4 §4.5):
-%       [marking(1..P), transition_fire, parent_state, state_type]
-%   - state_type is ASCII code: R=82 (root), T=84 (terminal), D=68 (duplicate)
+%       [marking(1..P), transition_fire, parent_state, state_indicator]
+%   - state_indicator is ASCII code: R=82 (root), T=84 (terminal), D=68 (duplicate)
 %   - Display is capped to the first 30 reachable states.
 %   - A short downward red stub marks displayed nodes with hidden successors.
 
-    if nargin < 1
+    if nargin < 2
         error('plotCOTREE:MissingInput', ...
-            'COTREE is required. Usage: plotCOTREE(COTREE, startState)');
+            'Usage: plotCOTREE(COTREE, spng, [startState])');
     end
 
-    if nargin < 2
+    if nargin < 3
         startState = [];
     end
 
@@ -34,6 +35,10 @@ function plotCOTREE(COTREE, startState)
     if ~ismatrix(COTREE) || ~isnumeric(COTREE)
         error('plotCOTREE:InvalidCOTREEType', ...
             'COTREE must be a numeric matrix returned by cotree.');
+    end
+    if ~isstruct(spng)
+        error('plotCOTREE:InvalidSPNG', ...
+            'spng must be a Petri net struct returned by pnstruct/initialdynamics.');
     end
 
     if ~isempty(startState) && ~iscell(startState)
@@ -58,6 +63,9 @@ function plotCOTREE(COTREE, startState)
             'parent_state column must contain integer indices in [0..N].');
     end
 
+    maxTransitionIdx = max([0; transitionFire(:)]);
+    [placeNames, transNames] = iResolveNames(spng, numPlaces, maxTransitionIdx);
+
     rootIdx = find(stateType == double('R'), 1, 'first');
     if isempty(rootIdx)
         rootCandidates = find(parentState == 0);
@@ -71,7 +79,7 @@ function plotCOTREE(COTREE, startState)
     if isempty(startState)
         startIdx = rootIdx;
     else
-        startIdx = iFindStateByCellMarking(markings, startState, numPlaces);
+        startIdx = iFindStateByCellMarking(markings, startState, numPlaces, placeNames);
     end
 
     maxDisplayStates = 30;
@@ -137,7 +145,13 @@ function plotCOTREE(COTREE, startState)
         plot([x(parent), x(child)], [y(parent), y(child)], 'r-');
         xt = (x(parent) + x(child)) / 2;
         yt = (y(parent) + y(child)) / 2;
-        text(xt - 0.01, yt, sprintf('t%d', selectedTransition(child)), 'Color', [0.7 0 0]);
+        transIdx = selectedTransition(child);
+        if transIdx >= 1 && transIdx <= numel(transNames)
+            edgeLabel = transNames{transIdx};
+        else
+            edgeLabel = sprintf('t%d', transIdx);
+        end
+        text(xt - 0.01, yt, edgeLabel, 'Color', [0.7 0 0]);
     end
 
     numnodes = 0;
@@ -176,11 +190,11 @@ function plotCOTREE(COTREE, startState)
     end
 
     for i = 1:numel(selectedParent)
-        label = iMarkingString(selectedMarkings(i, :), numPlaces);
+        label = iMarkingString(selectedMarkings(i, :), placeNames);
         text(x(i) - length(label) * 0.0035, y(i), label, 'FontSize', 10);
     end
 
-    title(iPlaceTitle(numPlaces));
+    title(iPlaceTitle(placeNames));
     text(0.02, 0.02, ['Height = ', num2str(h)]);
     iDrawLegend();
     hold off;
@@ -191,7 +205,7 @@ function plotCOTREE(COTREE, startState)
     end
 end
 
-function stateIdx = iFindStateByCellMarking(markings, startState, numPlaces)
+function stateIdx = iFindStateByCellMarking(markings, startState, numPlaces, placeNames)
     if mod(numel(startState), 2) ~= 0
         error('plotCOTREE:InvalidStartState', ...
             'startState must contain place-token pairs, e.g., {''p2'',1,''p3'',1}.');
@@ -206,12 +220,15 @@ function stateIdx = iFindStateByCellMarking(markings, startState, numPlaces)
                 'Place names in startState must be strings, e.g., ''p2''.');
         end
         placeName = char(placeName);
-        tok = regexp(placeName, '^p(\d+)$', 'tokens', 'once');
-        if isempty(tok)
-            error('plotCOTREE:InvalidStartStatePlace', ...
-                'Unsupported place name "%s". Expected p1, p2, ...', placeName);
+        placeIdx = find(strcmp(placeNames, placeName), 1, 'first');
+        if isempty(placeIdx)
+            tok = regexp(placeName, '^p(\d+)$', 'tokens', 'once');
+            if isempty(tok)
+                error('plotCOTREE:InvalidStartStatePlace', ...
+                    'Unsupported place name "%s".', placeName);
+            end
+            placeIdx = str2double(tok{1});
         end
-        placeIdx = str2double(tok{1});
         if placeIdx < 1 || placeIdx > numPlaces
             error('plotCOTREE:StartStatePlaceOutOfRange', ...
                 'Place index in "%s" is out of range for this COTREE.', placeName);
@@ -271,17 +288,18 @@ function color = iNodeColors(typeCodes)
     end
 end
 
-function s = iMarkingString(m, numPlaces)
+function s = iMarkingString(m, placeNames)
     parts = {};
+    numPlaces = numel(placeNames);
     for p = 1:numPlaces
         val = m(p);
         if val > 0
             if isinf(val)
-                parts{end + 1} = sprintf('wp%d', p); %#ok<AGROW>
+                parts{end + 1} = sprintf('w%s', placeNames{p}); %#ok<AGROW>
             elseif val == 1
-                parts{end + 1} = sprintf('p%d', p); %#ok<AGROW>
+                parts{end + 1} = placeNames{p}; %#ok<AGROW>
             else
-                parts{end + 1} = sprintf('%g p%d', val, p); %#ok<AGROW>
+                parts{end + 1} = sprintf('%g%s', val, placeNames{p}); %#ok<AGROW>
             end
         end
     end
@@ -292,9 +310,51 @@ function s = iMarkingString(m, numPlaces)
     end
 end
 
-function t = iPlaceTitle(numPlaces)
-    names = arrayfun(@(i) sprintf('p%d', i), 1:numPlaces, 'UniformOutput', false);
-    t = ['Places: ', strjoin(names, ', ')];
+function t = iPlaceTitle(placeNames)
+    t = ['Places: ', strjoin(placeNames, ', ')];
+end
+
+function [placeNames, transNames] = iResolveNames(spng, numPlaces, maxTransitionIdx)
+    placeNames = arrayfun(@(i) sprintf('p%d', i), 1:numPlaces, 'UniformOutput', false);
+    transNames = arrayfun(@(i) sprintf('t%d', i), 1:maxTransitionIdx, 'UniformOutput', false);
+
+    p = iExtractNames(spng, {'global_places', 'places', 'place_list'}, ...
+        {'set_of_Ps', 'place_names', 'pnames'});
+    t = iExtractNames(spng, {'global_transitions', 'transitions', 'transition_list'}, ...
+        {'set_of_Ts', 'transition_names', 'tnames'});
+
+    if numel(p) >= numPlaces
+        placeNames = p(1:numPlaces);
+    end
+    if numel(t) >= maxTransitionIdx
+        transNames = t(1:maxTransitionIdx);
+    end
+end
+
+function names = iExtractNames(s, structFields, cellFields)
+    names = {};
+    for k = 1:numel(structFields)
+        f = structFields{k};
+        if isfield(s, f)
+            arr = s.(f);
+            if isstruct(arr) && ~isempty(arr) && isfield(arr, 'name')
+                names = {arr.name};
+                if ~isempty(names)
+                    return;
+                end
+            end
+        end
+    end
+    for k = 1:numel(cellFields)
+        f = cellFields{k};
+        if isfield(s, f)
+            arr = s.(f);
+            if iscell(arr) && ~isempty(arr)
+                names = cellfun(@char, arr, 'UniformOutput', false);
+                return;
+            end
+        end
+    end
 end
 
 function iDrawLegend()
