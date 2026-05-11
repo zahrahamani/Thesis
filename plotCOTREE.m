@@ -79,7 +79,11 @@ function plotCOTREE(COTREE, pns, startState)
     if isempty(startState)
         startIdx = rootIdx;
     else
-        startIdx = iFindStateByCellMarking(markings, startState, numPlaces, placeNames);
+        startIdx = iFindStateByCellMarking(markings, stateType, startState, numPlaces, placeNames);
+        if isempty(startIdx)
+            disp('plotCOTREE: startState not found in COTREE; no plot generated.');
+            return;
+        end
     end
 
     maxDisplayStates = 30;
@@ -205,13 +209,14 @@ function plotCOTREE(COTREE, pns, startState)
     end
 end
 
-function stateIdx = iFindStateByCellMarking(markings, startState, numPlaces, placeNames)
+function stateIdx = iFindStateByCellMarking(markings, stateType, startState, numPlaces, placeNames)
     if mod(numel(startState), 2) ~= 0
         error('plotCOTREE:InvalidStartState', ...
             'startState must contain place-token pairs, e.g., {''p2'',1,''p3'',1}.');
     end
 
-    query = nan(1, numPlaces);
+    % Exact-marking semantics: unspecified places are assumed to be zero.
+    query = zeros(1, numPlaces);
     for ii = 1:2:numel(startState)
         placeName = startState{ii};
         tokenCount = startState{ii + 1};
@@ -233,21 +238,34 @@ function stateIdx = iFindStateByCellMarking(markings, startState, numPlaces, pla
             error('plotCOTREE:StartStatePlaceOutOfRange', ...
                 'Place index in "%s" is out of range for this COTREE.', placeName);
         end
+        if ~(isnumeric(tokenCount) && isscalar(tokenCount) && (isinf(tokenCount) || tokenCount >= 0))
+            error('plotCOTREE:InvalidStartStateToken', ...
+                'Token count for "%s" must be a nonnegative number or inf.', placeName);
+        end
         query(placeIdx) = tokenCount;
     end
 
     validMask = true(size(markings, 1), 1);
     for p = 1:numPlaces
-        if ~isnan(query(p))
+        if isinf(query(p))
+            validMask = validMask & isinf(markings(:, p));
+        else
             validMask = validMask & (markings(:, p) == query(p));
         end
     end
     candidates = find(validMask);
     if isempty(candidates)
-        error('plotCOTREE:StartStateNotFound', ...
-            'Provided startState does not match any marking in COTREE.');
+        stateIdx = [];
+        return;
     end
-    stateIdx = candidates(1);
+
+    % If the same marking appears multiple times, prefer non-duplicate node.
+    nonDuplicate = candidates(stateType(candidates) ~= double('D'));
+    if ~isempty(nonDuplicate)
+        stateIdx = nonDuplicate(1);
+    else
+        stateIdx = candidates(1);
+    end
 end
 
 function label = iTypeLabel(typeCode)
