@@ -79,9 +79,13 @@ function plotCOTREE(COTREE, pns, startState)
     if isempty(startState)
         startIdx = rootIdx;
     else
-        startIdx = iFindStateByCellMarking(markings, stateType, startState, numPlaces, placeNames);
+        [startIdx, startStateMessage] = iFindStateByCellMarking(markings, stateType, startState, numPlaces, placeNames);
         if isempty(startIdx)
-            disp('plotCOTREE: startState not found in COTREE; no plot generated.');
+            if isempty(startStateMessage)
+                disp('plotCOTREE: startState not found in COTREE; no plot generated.');
+            else
+                disp(startStateMessage);
+            end
             return;
         end
     end
@@ -209,10 +213,13 @@ function plotCOTREE(COTREE, pns, startState)
     end
 end
 
-function stateIdx = iFindStateByCellMarking(markings, stateType, startState, numPlaces, placeNames)
+function [stateIdx, message] = iFindStateByCellMarking(markings, stateType, startState, numPlaces, placeNames)
+    stateIdx = [];
+    message = '';
+
     if mod(numel(startState), 2) ~= 0
-        error('plotCOTREE:InvalidStartState', ...
-            'startState must contain place-token pairs, e.g., {''p2'',1,''p3'',1}.');
+        message = 'plotCOTREE: startState must contain place-token pairs, e.g., {''p2'',1,''p3'',1}; no plot generated.';
+        return;
     end
 
     % Exact-marking semantics: unspecified places are assumed to be zero.
@@ -221,26 +228,26 @@ function stateIdx = iFindStateByCellMarking(markings, stateType, startState, num
         placeName = startState{ii};
         tokenCount = startState{ii + 1};
         if ~ischar(placeName) && ~isstring(placeName)
-            error('plotCOTREE:InvalidStartStatePlace', ...
-                'Place names in startState must be strings, e.g., ''p2''.');
+            message = 'plotCOTREE: place names in startState must be strings, e.g., ''p2''; no plot generated.';
+            return;
         end
         placeName = char(placeName);
         placeIdx = find(strcmp(placeNames, placeName), 1, 'first');
         if isempty(placeIdx)
             tok = regexp(placeName, '^p(\d+)$', 'tokens', 'once');
             if isempty(tok)
-                error('plotCOTREE:InvalidStartStatePlace', ...
-                    'Unsupported place name "%s".', placeName);
+                message = sprintf('plotCOTREE: unsupported place name "%s"; no plot generated.', placeName);
+                return;
             end
             placeIdx = str2double(tok{1});
         end
         if placeIdx < 1 || placeIdx > numPlaces
-            error('plotCOTREE:StartStatePlaceOutOfRange', ...
-                'Place index in "%s" is out of range for this COTREE.', placeName);
+            message = sprintf('plotCOTREE: place "%s" is not available in this COTREE/model; no plot generated.', placeName);
+            return;
         end
         if ~(isnumeric(tokenCount) && isscalar(tokenCount) && (isinf(tokenCount) || tokenCount >= 0))
-            error('plotCOTREE:InvalidStartStateToken', ...
-                'Token count for "%s" must be a nonnegative number or inf.', placeName);
+            message = sprintf('plotCOTREE: token count for "%s" must be a nonnegative number or inf; no plot generated.', placeName);
+            return;
         end
         query(placeIdx) = tokenCount;
     end
@@ -255,7 +262,6 @@ function stateIdx = iFindStateByCellMarking(markings, stateType, startState, num
     end
     candidates = find(validMask);
     if isempty(candidates)
-        stateIdx = [];
         return;
     end
 
