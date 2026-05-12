@@ -1,15 +1,14 @@
-function plotCOTREE(COTREE, pns, startState)
+function plotCOTREE(COTREE, startState)
 % plotCOTREE Display reachability graph from COTREE matrix.
 %
-%   plotCOTREE(COTREE, pns) displays the reachability graph starting from
-%   the initial/root marking represented in COTREE.
+%   plotCOTREE(COTREE) displays the reachability graph starting from the
+%   initial/root marking represented in COTREE.
 %
-%   plotCOTREE(COTREE, pns, startState) displays the reachability graph
-%   starting from the user-provided start state (marking).
+%   plotCOTREE(COTREE, startState) displays the reachability graph starting
+%   from the user-provided start state (marking).
 %
 % Inputs:
 %   COTREE     - Required. Matrix returned by cotree(...).
-%   pns        - Required. Petri net struct from pnstruct (place/transition names).
 %   startState - Optional. State definition used as root marking.
 %
 % Notes:
@@ -19,12 +18,13 @@ function plotCOTREE(COTREE, pns, startState)
 %   - Display is capped to the first 30 reachable states.
 %   - A short downward red stub marks displayed nodes with hidden successors.
 
-    if nargin < 2
+    if nargin < 1
         error('plotCOTREE:MissingInput', ...
-            'Usage: plotCOTREE(COTREE, pns, [startState])');
+            'Usage: plotCOTREE(COTREE, [startState])');
     end
 
-    if nargin < 3
+    hasStartState = nargin >= 2;
+    if ~hasStartState
         startState = [];
     end
 
@@ -35,10 +35,6 @@ function plotCOTREE(COTREE, pns, startState)
     if ~ismatrix(COTREE) || ~isnumeric(COTREE)
         error('plotCOTREE:InvalidCOTREEType', ...
             'COTREE must be a numeric matrix returned by cotree.');
-    end
-    if ~isstruct(pns)
-        error('plotCOTREE:InvalidPNS', ...
-            'pns must be a Petri net struct returned by pnstruct (or initialdynamics).');
     end
 
     if ~isempty(startState) && ~iscell(startState)
@@ -63,9 +59,6 @@ function plotCOTREE(COTREE, pns, startState)
             'parent_state column must contain integer indices in [0..N].');
     end
 
-    maxTransitionIdx = max([0; transitionFire(:)]);
-    [placeNames, transNames] = iResolveNames(pns, numPlaces, maxTransitionIdx);
-
     rootIdx = find(stateType == double('R'), 1, 'first');
     if isempty(rootIdx)
         rootCandidates = find(parentState == 0);
@@ -76,10 +69,10 @@ function plotCOTREE(COTREE, pns, startState)
         rootIdx = rootCandidates(1);
     end
 
-    if isempty(startState)
+    if ~hasStartState
         startIdx = rootIdx;
     else
-        [startIdx, startStateMessage] = iFindStateByCellMarking(markings, stateType, startState, numPlaces, placeNames);
+        [startIdx, startStateMessage] = iFindStateByCellMarking(markings, stateType, startState, numPlaces);
         if isempty(startIdx)
             if isempty(startStateMessage)
                 disp('plotCOTREE: startState not found in COTREE; no plot generated.');
@@ -90,7 +83,7 @@ function plotCOTREE(COTREE, pns, startState)
         end
     end
 
-    maxDisplayStates = 30;
+    maxDisplayStates = 50;
     keepMask = false(numStates, 1);
     queue = startIdx;
     keepMask(startIdx) = true;
@@ -154,11 +147,7 @@ function plotCOTREE(COTREE, pns, startState)
         xt = (x(parent) + x(child)) / 2;
         yt = (y(parent) + y(child)) / 2;
         transIdx = selectedTransition(child);
-        if transIdx >= 1 && transIdx <= numel(transNames)
-            edgeLabel = transNames{transIdx};
-        else
-            edgeLabel = sprintf('t%d', transIdx);
-        end
+        edgeLabel = iTransitionString(transIdx);
         text(xt - 0.01, yt, edgeLabel, 'Color', [0.7 0 0]);
     end
 
@@ -198,11 +187,11 @@ function plotCOTREE(COTREE, pns, startState)
     end
 
     for i = 1:numel(selectedParent)
-        label = iMarkingString(selectedMarkings(i, :), placeNames);
+        label = iMarkingString(selectedMarkings(i, :));
         text(x(i) - length(label) * 0.0035, y(i), label, 'FontSize', 10);
     end
 
-    title(iPlaceTitle(placeNames));
+    title(iPlaceTitle(numPlaces));
     text(0.02, 0.02, ['Height = ', num2str(h)]);
     iDrawLegend();
     hold off;
@@ -213,7 +202,7 @@ function plotCOTREE(COTREE, pns, startState)
     end
 end
 
-function [stateIdx, message] = iFindStateByCellMarking(markings, stateType, startState, numPlaces, placeNames)
+function [stateIdx, message] = iFindStateByCellMarking(markings, stateType, startState, numPlaces)
     stateIdx = [];
     message = '';
 
@@ -222,34 +211,17 @@ function [stateIdx, message] = iFindStateByCellMarking(markings, stateType, star
         return;
     end
 
-    % Exact-marking semantics: unspecified places are assumed to be zero.
-    query = zeros(1, numPlaces);
-    for ii = 1:2:numel(startState)
-        placeName = startState{ii};
-        tokenCount = startState{ii + 1};
-        if ~ischar(placeName) && ~isstring(placeName)
-            message = 'plotCOTREE: place names in startState must be strings, e.g., ''p2''; no plot generated.';
-            return;
-        end
-        placeName = char(placeName);
-        placeIdx = find(strcmp(placeNames, placeName), 1, 'first');
-        if isempty(placeIdx)
-            tok = regexp(placeName, '^p(\d+)$', 'tokens', 'once');
-            if isempty(tok)
-                message = sprintf('plotCOTREE: unsupported place name "%s"; no plot generated.', placeName);
-                return;
-            end
-            placeIdx = str2double(tok{1});
-        end
-        if placeIdx < 1 || placeIdx > numPlaces
-            message = sprintf('plotCOTREE: place "%s" is not available in this COTREE/model; no plot generated.', placeName);
-            return;
-        end
-        if ~(isnumeric(tokenCount) && isscalar(tokenCount) && (isinf(tokenCount) || tokenCount >= 0))
-            message = sprintf('plotCOTREE: token count for "%s" must be a nonnegative number or inf; no plot generated.', placeName);
-            return;
-        end
-        query(placeIdx) = tokenCount;
+    try
+        query = iCellState2VectorState(startState, numPlaces);
+    catch ME
+        message = ['plotCOTREE: invalid startState (', ME.message, '); no plot generated.'];
+        return;
+    end
+
+    query = query(:)';
+    if numel(query) ~= numPlaces
+        message = 'plotCOTREE: startState does not match the number of places in COTREE; no plot generated.';
+        return;
     end
 
     validMask = true(size(markings, 1), 1);
@@ -312,73 +284,75 @@ function color = iNodeColors(typeCodes)
     end
 end
 
-function s = iMarkingString(m, placeNames)
-    parts = {};
-    numPlaces = numel(placeNames);
+function s = iMarkingString(m)
+    s = markings_string(m);
+    s = strrep(s, 'Inf', 'w');
+end
+
+function s = iTransitionString(transIdx)
+    if transIdx <= 0
+        s = '';
+        return;
+    end
+    s = tname(transIdx);
+end
+
+function query = iCellState2VectorState(startState, numPlaces)
+    if isempty(startState)
+        query = zeros(1, numPlaces);
+        return;
+    end
+
+    if exist('cellState2vectorState', 'file') == 2
+        query = cellState2vectorState(startState);
+        return;
+    end
+
+    query = zeros(1, numPlaces);
+    for ii = 1:2:numel(startState)
+        placeName = startState{ii};
+        tokenCount = startState{ii + 1};
+
+        if ~ischar(placeName) && ~isstring(placeName)
+            error('Place names in startState must be strings.');
+        end
+        if ~(isnumeric(tokenCount) && isscalar(tokenCount) && (isinf(tokenCount) || tokenCount >= 0))
+            error('Token count for "%s" must be a nonnegative number or inf.', char(placeName));
+        end
+
+        placeIdx = iPlaceIndex(char(placeName), numPlaces);
+        if isempty(placeIdx)
+            error('Place "%s" is not available in this Petri net.', char(placeName));
+        end
+
+        query(placeIdx) = tokenCount;
+    end
+end
+
+function placeIdx = iPlaceIndex(placeName, numPlaces)
+    placeIdx = [];
     for p = 1:numPlaces
-        val = m(p);
-        if val > 0
-            if isinf(val)
-                parts{end + 1} = sprintf('w%s', placeNames{p}); %#ok<AGROW>
-            elseif val == 1
-                parts{end + 1} = placeNames{p}; %#ok<AGROW>
-            else
-                parts{end + 1} = sprintf('%g%s', val, placeNames{p}); %#ok<AGROW>
-            end
+        if strcmp(pname(p), placeName)
+            placeIdx = p;
+            return;
         end
     end
-    if isempty(parts)
-        s = '0';
-    else
-        s = strjoin(parts, ' + ');
+
+    tok = regexp(placeName, '^p(\d+)$', 'tokens', 'once');
+    if ~isempty(tok)
+        idx = str2double(tok{1});
+        if idx >= 1 && idx <= numPlaces
+            placeIdx = idx;
+        end
     end
 end
 
-function t = iPlaceTitle(placeNames)
-    t = ['Places: ', strjoin(placeNames, ', ')];
-end
-
-function [placeNames, transNames] = iResolveNames(pns, numPlaces, maxTransitionIdx)
-    placeNames = arrayfun(@(i) sprintf('p%d', i), 1:numPlaces, 'UniformOutput', false);
-    transNames = arrayfun(@(i) sprintf('t%d', i), 1:maxTransitionIdx, 'UniformOutput', false);
-
-    p = iExtractNames(pns, {'global_places', 'places', 'place_list'}, ...
-        {'set_of_Ps', 'place_names', 'pnames'});
-    t = iExtractNames(pns, {'global_transitions', 'transitions', 'transition_list'}, ...
-        {'set_of_Ts', 'transition_names', 'tnames'});
-
-    if numel(p) >= numPlaces
-        placeNames = p(1:numPlaces);
+function t = iPlaceTitle(numPlaces)
+    names = cell(1, numPlaces);
+    for i = 1:numPlaces
+        names{i} = pname(i);
     end
-    if numel(t) >= maxTransitionIdx
-        transNames = t(1:maxTransitionIdx);
-    end
-end
-
-function names = iExtractNames(s, structFields, cellFields)
-    names = {};
-    for k = 1:numel(structFields)
-        f = structFields{k};
-        if isfield(s, f)
-            arr = s.(f);
-            if isstruct(arr) && ~isempty(arr) && isfield(arr, 'name')
-                names = {arr.name};
-                if ~isempty(names)
-                    return;
-                end
-            end
-        end
-    end
-    for k = 1:numel(cellFields)
-        f = cellFields{k};
-        if isfield(s, f)
-            arr = s.(f);
-            if iscell(arr) && ~isempty(arr)
-                names = cellfun(@char, arr, 'UniformOutput', false);
-                return;
-            end
-        end
-    end
+    t = ['Places: ', strjoin(names, ', ')];
 end
 
 function iDrawLegend()
