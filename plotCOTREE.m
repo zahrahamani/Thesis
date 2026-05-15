@@ -83,7 +83,7 @@ function plotCOTREE(COTREE, startState)
         end
     end
 
-    maxDisplayStates = 50;
+    maxDisplayStates = 400;
     keepMask = false(numStates, 1);
     queue = startIdx;
     keepMask(startIdx) = true;
@@ -212,13 +212,13 @@ function [stateIdx, message] = iFindStateByCellMarking(markings, stateType, star
     end
 
     try
-        query = iCellState2VectorState(startState, numPlaces);
+        query = cellState2vectorState(startState);
+        query = query(:)';
     catch ME
         message = ['plotCOTREE: invalid startState (', ME.message, '); no plot generated.'];
         return;
     end
 
-    query = query(:)';
     if numel(query) ~= numPlaces
         message = 'plotCOTREE: startState does not match the number of places in COTREE; no plot generated.';
         return;
@@ -295,56 +295,6 @@ function s = iTransitionString(transIdx)
         return;
     end
     s = tname(transIdx);
-end
-
-function query = iCellState2VectorState(startState, numPlaces)
-    if isempty(startState)
-        query = zeros(1, numPlaces);
-        return;
-    end
-
-    if exist('cellState2vectorState', 'file') == 2
-        query = cellState2vectorState(startState);
-        return;
-    end
-
-    query = zeros(1, numPlaces);
-    for ii = 1:2:numel(startState)
-        placeName = startState{ii};
-        tokenCount = startState{ii + 1};
-
-        if ~ischar(placeName) && ~isstring(placeName)
-            error('Place names in startState must be strings.');
-        end
-        if ~(isnumeric(tokenCount) && isscalar(tokenCount) && (isinf(tokenCount) || tokenCount >= 0))
-            error('Token count for "%s" must be a nonnegative number or inf.', char(placeName));
-        end
-
-        placeIdx = iPlaceIndex(char(placeName), numPlaces);
-        if isempty(placeIdx)
-            error('Place "%s" is not available in this Petri net.', char(placeName));
-        end
-
-        query(placeIdx) = tokenCount;
-    end
-end
-
-function placeIdx = iPlaceIndex(placeName, numPlaces)
-    placeIdx = [];
-    for p = 1:numPlaces
-        if strcmp(pname(p), placeName)
-            placeIdx = p;
-            return;
-        end
-    end
-
-    tok = regexp(placeName, '^p(\d+)$', 'tokens', 'once');
-    if ~isempty(tok)
-        idx = str2double(tok{1});
-        if idx >= 1 && idx <= numPlaces
-            placeIdx = idx;
-        end
-    end
 end
 
 function t = iPlaceTitle(numPlaces)
