@@ -17,6 +17,8 @@ function plotCOTREE(COTREE, startState)
 %   - state_indicator: R=82 (root), T=84 (terminal), D=68 (duplicate)
 %   - Display is capped (see iDefaultMaxDisplayStates).
 %   - Red stubs mark nodes with hidden successors or non-initial roots.
+%   - Long markings or many places: nodes labeled S1, S2, ... (COTREE row index).
+%   - Hover over a state box to see the full marking (State: ...).
 
     if nargin < 1
         error('plotCOTREE:MissingInput', ...
@@ -188,6 +190,8 @@ function view = iBuildPlotView(tree, sel)
     view.depth = depth;
     view.widths = widths;
     view.heights = heights;
+    view.stateNumbers = sel.indices(:);
+    view.numPlaces = tree.numPlaces;
 end
 
 % -------------------------------------------------------------------------
@@ -206,8 +210,8 @@ end
 
 % -------------------------------------------------------------------------
 function iDrawReachabilityFigure(tree, view, startIdx)
-    figure;
-    clf;
+    fig = figure;
+    clf(fig);
     hold on;
     axis([0 1 0 1]);
     ax = gca;
@@ -222,6 +226,7 @@ function iDrawReachabilityFigure(tree, view, startIdx)
     title(iPlaceTitle(tree.numPlaces));
     text(0.02, 0.02, ['Height = ', num2str(view.h)]);
     iDrawLegend();
+    iEnableStateHover(fig, ax, view);
     hold off;
 end
 
@@ -276,7 +281,7 @@ end
 % -------------------------------------------------------------------------
 function iDrawMarkingLabels(view)
     for i = 1:numel(view.parent)
-        label = iMarkingString(view.markings(i, :));
+        label = iNodeDisplayLabel(view.markings(i, :), view.stateNumbers(i), view.numPlaces);
         text(view.x(i) - length(label) * 0.0035, view.y(i), label, 'FontSize', 10);
     end
 end
@@ -365,6 +370,92 @@ end
 function s = iMarkingString(m)
     s = markings_string(m);
     s = strrep(s, 'Inf', 'w');
+end
+
+% -------------------------------------------------------------------------
+function label = iNodeDisplayLabel(marking, stateNum, numPlaces)
+    fullLabel = iMarkingString(marking);
+    if iPreferStateNumberLabel(numPlaces, fullLabel)
+        label = ['S', num2str(stateNum)];
+    else
+        label = fullLabel;
+    end
+end
+
+% -------------------------------------------------------------------------
+function tf = iPreferStateNumberLabel(numPlaces, markingLabel)
+    tf = numPlaces > iLargePlaceCountThreshold() ...
+        || length(markingLabel) > iMaxMarkingLabelLength();
+end
+
+% -------------------------------------------------------------------------
+function n = iMaxMarkingLabelLength()
+    n = 30;
+end
+
+% -------------------------------------------------------------------------
+function n = iLargePlaceCountThreshold()
+    n = 10;
+end
+
+% -------------------------------------------------------------------------
+function s = iFullMarkingTooltip(marking)
+    s = ['State: ', iMarkingString(marking)];
+end
+
+% -------------------------------------------------------------------------
+function iEnableStateHover(fig, ax, view)
+    tipH = text(ax, NaN, NaN, '', 'Visible', 'off', ...
+        'BackgroundColor', [1 1 0.93], 'Margin', 4, ...
+        'EdgeColor', [0.45 0.45 0.45], 'FontSize', 9, ...
+        'Clipping', 'off', 'Tag', 'plotCOTREE_hoverTip', ...
+        'HitTest', 'off', 'PickableParts', 'none');
+
+    markings = cell(numel(view.parent), 1);
+    for i = 1:numel(view.parent)
+        markings{i} = iFullMarkingTooltip(view.markings(i, :));
+    end
+
+    hoverData.view = view;
+    hoverData.markings = markings;
+    hoverData.tip = tipH;
+    hoverData.ax = ax;
+    setappdata(fig, 'plotCOTREE_hoverData', hoverData);
+    set(fig, 'WindowButtonMotionFcn', @iOnStateHover);
+end
+
+% -------------------------------------------------------------------------
+function iOnStateHover(fig, ~)
+    data = getappdata(fig, 'plotCOTREE_hoverData');
+    if isempty(data) || ~ishandle(data.ax) || ~ishandle(data.tip)
+        return;
+    end
+
+    cp = get(data.ax, 'CurrentPoint');
+    hit = iHitTestState(data.view, cp(1, 1), cp(1, 2));
+    if hit > 0
+        v = data.view;
+        yTip = v.y(hit) + v.heights(hit) * 0.55;
+        set(data.tip, 'Position', [v.x(hit), yTip, 0], ...
+            'String', data.markings{hit}, 'Visible', 'on');
+    else
+        set(data.tip, 'Visible', 'off');
+    end
+end
+
+% -------------------------------------------------------------------------
+function hit = iHitTestState(view, x, y)
+    hit = 0;
+    for i = 1:numel(view.parent)
+        inX = x >= view.x(i) - view.widths(i) / 2 ...
+            && x <= view.x(i) + view.widths(i) / 2;
+        inY = y >= view.y(i) - view.heights(i) / 2 ...
+            && y <= view.y(i) + view.heights(i) / 2;
+        if inX && inY
+            hit = i;
+            return;
+        end
+    end
 end
 
 % -------------------------------------------------------------------------
