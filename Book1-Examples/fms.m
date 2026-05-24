@@ -23,5 +23,5 @@ CT = cotree(pni,1,1);
 
 % Example with custom start state
 %plotCOTREE(CT, pns, {'pC1',1,'pC2',1,'pR1',1,'pR4',1,'pi1AS',1,'pi2AS',1,'piCK',1});
-plotCOTREE(CT, {'pC1',1,'pC2',1,'pOB',1,'pR1',1,'pR3',1,'pR4',1,'pi1AS',1,'pi2AS',1});
-%plotCOTREE(CT)
+%plotCOTREE(CT, {'pC1',1,'pC2',1,'pOB',1,'pR1',1,'pR3',1,'pR4',1,'pi1AS',1,'pi2AS',1});
+ plotCOTREE(CT)
