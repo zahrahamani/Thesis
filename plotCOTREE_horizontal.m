@@ -34,7 +34,7 @@ end
 % -------------------------------------------------------------------------
 
 function n = iDefaultMaxDisplayStates()
-    n = 500;
+    n = 30;
 end
 
 function tree = iParseAndValidateCOTREE(COTREE, startState)
@@ -454,20 +454,34 @@ function t = iPlaceTitle(numPlaces)
 end
 
 function iDrawLegend(ax)
+    % Compact translucent legend, flush to the right edge of the plot axes.
     axes(ax);
-    xlegenda = [0.85 0.745 0.745 0.745];
-    ylegenda = [0.925 0.965 0.925 0.885];
-    colorlegenda = [-3 -2 -1 0];
-    xdim = [0.28 0.05 0.05 0.05];
-    ydim = [0.13 0.03 0.03 0.03];
+    xRight = 1.0;
+    xLeft = 0.872;
+    yBot = 0.878;
+    yTop = 0.982;
+    patch(ax, [xLeft xRight xRight xLeft], [yBot yBot yTop yTop], [1 1 1], ...
+        'FaceAlpha', 0.42, 'EdgeColor', [0.55 0.55 0.55], 'LineWidth', 0.5, ...
+        'HitTest', 'off', 'PickableParts', 'none', 'Clipping', 'off');
 
-    [Xleg, Yleg, colorleg] = PNCT_addbox(xlegenda, ylegenda, xdim, ydim, colorlegenda);
-    patch(ax, Xleg, Yleg, colorleg, 'HitTest', 'off', 'PickableParts', 'none');
+    sw = 0.016;
+    sh = 0.016;
+    xPad = 0.006;
+    yPos = [0.958 0.928 0.898];
+    colors = {[0.95 0.95 0.95], [0.45 0.85 0.95], [0.45 0.95 0.45]};
+    labels = {'Normal', 'Terminal', 'Duplicate'};
 
-    text(ax, 0.79, 0.965, 'Normal State', 'FontSize', 11, ...
-        'HitTest', 'off', 'PickableParts', 'none');
-    text(ax, 0.79, 0.925, 'Terminal State', 'FontSize', 11, ...
-        'HitTest', 'off', 'PickableParts', 'none');
-    text(ax, 0.79, 0.885, 'Duplicate State', 'FontSize', 11, ...
-        'HitTest', 'off', 'PickableParts', 'none');
+    for k = 1:3
+        yc = yPos(k);
+        xSwR = xRight - xPad;
+        xSwL = xSwR - sw;
+        patch(ax, [xSwL, xSwR, xSwR, xSwL], [yc - sh / 2, yc - sh / 2, yc + sh / 2, yc + sh / 2], ...
+            colors{k}, 'FaceAlpha', 0.85, 'EdgeColor', [0.35 0.35 0.35], ...
+            'LineWidth', 0.5, 'HitTest', 'off', 'PickableParts', 'none', 'Clipping', 'off');
+        text(ax, xSwL - 0.004, yc, labels{k}, 'FontSize', 8, ...
+            'HorizontalAlignment', 'right', 'VerticalAlignment', 'middle', ...
+            'Color', [0.12 0.12 0.12], 'HitTest', 'off', 'PickableParts', 'none', ...
+            'Clipping', 'off');
+    end
 end
+
