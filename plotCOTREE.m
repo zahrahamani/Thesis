@@ -21,14 +21,17 @@ function plotCOTREE(COTREE, startState)
 % See also plotCOTREE_advanced.
 
     if nargin < 1
-        error('plotCOTREE:MissingInput', ...
-            'Usage: plotCOTREE(COTREE, [startState])');
+        disp('plotCOTREE: missing COTREE input; usage: plotCOTREE(COTREE, [startState]).');
+        return;
     end
     if nargin < 2
         startState = [];
     end
 
     tree = iParseAndValidateCOTREE(COTREE, startState);
+    if isempty(tree)
+        return;
+    end
     startIdx = iResolveStartIndex(tree, startState, nargin >= 2);
     if isempty(startIdx)
         return;
@@ -47,16 +50,18 @@ end
 
 % -------------------------------------------------------------------------
 function tree = iParseAndValidateCOTREE(COTREE, startState)
+    tree = [];
     if isempty(COTREE)
-        error('plotCOTREE:EmptyCOTREE', 'COTREE must not be empty.');
+        disp('plotCOTREE: COTREE is empty; no plot generated.');
+        return;
     end
     if ~ismatrix(COTREE) || ~isnumeric(COTREE)
-        error('plotCOTREE:InvalidCOTREEType', ...
-            'COTREE must be a numeric matrix returned by cotree.');
+        disp('plotCOTREE: COTREE must be a numeric matrix returned by cotree; no plot generated.');
+        return;
     end
     if ~isempty(startState) && ~iscell(startState)
-        error('plotCOTREE:InvalidStartState', ...
-            'startState must be a cell array, e.g., {''p2'',1,''p3'',1}.');
+        disp('plotCOTREE: startState must be a cell array, e.g., {''p2'',1,''p3'',1}; no plot generated.');
+        return;
     end
 
     [numStates, numCols] = size(COTREE);
