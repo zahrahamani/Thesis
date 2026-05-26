@@ -17,8 +17,8 @@ function plotCOTREE(COTREE, startState)
 %   - state_indicator: R=82 (root), T=84 (terminal), D=68 (duplicate)
 %   - Display is capped (see iDefaultMaxDisplayStates).
 %   - Red stubs mark nodes with hidden successors or non-initial roots.
-%   - Long markings or many places: nodes labeled S1, S2, ... (COTREE row index).
-%   - Hover over a state box to see the full marking (State: ...).
+%
+% See also plotCOTREE_advanced.
 
     if nargin < 1
         error('plotCOTREE:MissingInput', ...
@@ -190,8 +190,6 @@ function view = iBuildPlotView(tree, sel)
     view.depth = depth;
     view.widths = widths;
     view.heights = heights;
-    view.stateNumbers = sel.indices(:);
-    view.numPlaces = tree.numPlaces;
 end
 
 % -------------------------------------------------------------------------
@@ -225,9 +223,8 @@ function iDrawReachabilityFigure(tree, view, startIdx)
     iDrawMarkingLabels(view);
     title(iPlaceTitle(tree.numPlaces));
     text(0.02, 0.02, ['Height = ', num2str(view.h)]);
-    iDrawLegend();
-    iEnableStateHover(fig, ax, view);
     hold off;
+    iDrawLegend(ax);
 end
 
 % -------------------------------------------------------------------------
@@ -281,7 +278,7 @@ end
 % -------------------------------------------------------------------------
 function iDrawMarkingLabels(view)
     for i = 1:numel(view.parent)
-        label = iNodeDisplayLabel(view.markings(i, :), view.stateNumbers(i), view.numPlaces);
+        label = iMarkingString(view.markings(i, :));
         text(view.x(i) - length(label) * 0.0035, view.y(i), label, 'FontSize', 10);
     end
 end
@@ -373,92 +370,6 @@ function s = iMarkingString(m)
 end
 
 % -------------------------------------------------------------------------
-function label = iNodeDisplayLabel(marking, stateNum, numPlaces)
-    fullLabel = iMarkingString(marking);
-    if iPreferStateNumberLabel(numPlaces, fullLabel)
-        label = ['S', num2str(stateNum)];
-    else
-        label = fullLabel;
-    end
-end
-
-% -------------------------------------------------------------------------
-function tf = iPreferStateNumberLabel(numPlaces, markingLabel)
-    tf = numPlaces > iLargePlaceCountThreshold() ...
-        || length(markingLabel) > iMaxMarkingLabelLength();
-end
-
-% -------------------------------------------------------------------------
-function n = iMaxMarkingLabelLength()
-    n = 30;
-end
-
-% -------------------------------------------------------------------------
-function n = iLargePlaceCountThreshold()
-    n = 10;
-end
-
-% -------------------------------------------------------------------------
-function s = iFullMarkingTooltip(marking)
-    s = ['State: ', iMarkingString(marking)];
-end
-
-% -------------------------------------------------------------------------
-function iEnableStateHover(fig, ax, view)
-    tipH = text(ax, NaN, NaN, '', 'Visible', 'off', ...
-        'BackgroundColor', [1 1 0.93], 'Margin', 4, ...
-        'EdgeColor', [0.45 0.45 0.45], 'FontSize', 9, ...
-        'Clipping', 'off', 'Tag', 'plotCOTREE_hoverTip', ...
-        'HitTest', 'off', 'PickableParts', 'none');
-
-    markings = cell(numel(view.parent), 1);
-    for i = 1:numel(view.parent)
-        markings{i} = iFullMarkingTooltip(view.markings(i, :));
-    end
-
-    hoverData.view = view;
-    hoverData.markings = markings;
-    hoverData.tip = tipH;
-    hoverData.ax = ax;
-    setappdata(fig, 'plotCOTREE_hoverData', hoverData);
-    set(fig, 'WindowButtonMotionFcn', @iOnStateHover);
-end
-
-% -------------------------------------------------------------------------
-function iOnStateHover(fig, ~)
-    data = getappdata(fig, 'plotCOTREE_hoverData');
-    if isempty(data) || ~ishandle(data.ax) || ~ishandle(data.tip)
-        return;
-    end
-
-    cp = get(data.ax, 'CurrentPoint');
-    hit = iHitTestState(data.view, cp(1, 1), cp(1, 2));
-    if hit > 0
-        v = data.view;
-        yTip = v.y(hit) + v.heights(hit) * 0.55;
-        set(data.tip, 'Position', [v.x(hit), yTip, 0], ...
-            'String', data.markings{hit}, 'Visible', 'on');
-    else
-        set(data.tip, 'Visible', 'off');
-    end
-end
-
-% -------------------------------------------------------------------------
-function hit = iHitTestState(view, x, y)
-    hit = 0;
-    for i = 1:numel(view.parent)
-        inX = x >= view.x(i) - view.widths(i) / 2 ...
-            && x <= view.x(i) + view.widths(i) / 2;
-        inY = y >= view.y(i) - view.heights(i) / 2 ...
-            && y <= view.y(i) + view.heights(i) / 2;
-        if inX && inY
-            hit = i;
-            return;
-        end
-    end
-end
-
-% -------------------------------------------------------------------------
 function s = iTransitionString(transIdx)
     if transIdx <= 0
         s = '';
@@ -477,15 +388,27 @@ function t = iPlaceTitle(numPlaces)
 end
 
 % -------------------------------------------------------------------------
-function iDrawLegend()
-    x0 = 0.74;
-    y0 = 0.92;
-    w = 0.035;
-    h = 0.02;
-    rectangle('Position', [x0, y0, w, h], 'FaceColor', [0.95 0.95 0.95]);
-    text(x0 + 0.045, y0 + 0.01, 'Normal State', 'VerticalAlignment', 'middle');
-    rectangle('Position', [x0, y0 - 0.04, w, h], 'FaceColor', [0.45 0.85 0.95]);
-    text(x0 + 0.045, y0 - 0.03, 'Terminal State', 'VerticalAlignment', 'middle');
-    rectangle('Position', [x0, y0 - 0.08, w, h], 'FaceColor', [0.45 0.95 0.45]);
-    text(x0 + 0.045, y0 - 0.07, 'Duplicate State', 'VerticalAlignment', 'middle');
+function iDrawLegend(ax)
+    % Compact translucent legend (top-right); tree stays visible underneath.
+    axes(ax);
+    patch(ax, [0.865 0.995 0.995 0.865], [0.878 0.878 0.982 0.982], [1 1 1], ...
+        'FaceAlpha', 0.42, 'EdgeColor', [0.55 0.55 0.55], 'LineWidth', 0.5, ...
+        'HitTest', 'off', 'PickableParts', 'none');
+
+    sw = 0.016;
+    sh = 0.016;
+    x0 = 0.878;
+    yPos = [0.958 0.928 0.898];
+    colors = {[0.95 0.95 0.95], [0.45 0.85 0.95], [0.45 0.95 0.45]};
+    labels = {'Normal', 'Terminal', 'Duplicate'};
+
+    for k = 1:3
+        yc = yPos(k);
+        patch(ax, [x0, x0 + sw, x0 + sw, x0], [yc - sh / 2, yc - sh / 2, yc + sh / 2, yc + sh / 2], ...
+            colors{k}, 'FaceAlpha', 0.85, 'EdgeColor', [0.35 0.35 0.35], ...
+            'LineWidth', 0.5, 'HitTest', 'off', 'PickableParts', 'none');
+        text(ax, x0 + sw + 0.008, yc, labels{k}, 'FontSize', 8, ...
+            'VerticalAlignment', 'middle', 'Color', [0.12 0.12 0.12], ...
+            'HitTest', 'off', 'PickableParts', 'none');
+    end
 end
