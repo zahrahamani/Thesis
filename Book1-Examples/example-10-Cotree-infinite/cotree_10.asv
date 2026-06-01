@@ -6,5 +6,5 @@ addpath(fullfile(fileparts(mfilename('fullpath')),'..','..'));
 pns = pnstruct('cotree_10_pdf');
 dyn.m0 = {'p1',1};
 pni = initialdynamics(pns, dyn);
-COTREE = cotree(pni, 0, 0);
-plotCOTREE(COTREE);
+COTREE = cotree(pni, 1, 1);
+plotCOTREE(COTREE,{'p2',1, 'p3',inf});

@@ -19,9 +19,25 @@ dyn.ft = {'tC1',10,'tC2',10, 'tC1M1',2,'tC2M2',2,...
 % combine static and dynamic parts to form the Petri net 
 pni = initialdynamics(pns, dyn);
 
-CT = cotree(pni,1,1);
+CT = cotree(pni,0,0);
 
+plotCOTREE(CT)
+plotCOTREE(CT, {'pC1',1,'pC2',1,'pOB',1,'pR1',1,'pR3',1,'pR4',1,'pi1AS',1,'pi2AS',1})
 % Example with custom start state
-%plotCOTREE(CT, pns, {'pC1',1,'pC2',1,'pR1',1,'pR4',1,'pi1AS',1,'pi2AS',1,'piCK',1});
-%plotCOTREE(CT, {'pC1',1,'pC2',1,'pOB',1,'pR1',1,'pR3',1,'pR4',1,'pi1AS',1,'pi2AS',1});
- plotCOTREE(CT)
+%plotCOTREE_experimental(CT, {'pC1',1,'pC2',1,'pOB',1,'pR1',1,'pR3',1,'pR4',1,'pi1AS',1,'pi2AS',1});
+%plotCOTREE_experimental_horizontal(CT)
+%plotCOTREE_experimental(CT, {'pC1',1,'pC2',1,'pR1',1,'pR4',1,'pi1AS',1,'piCK',1,'po2AS',1,'poM2',1})
+%plotCOTREE(CT, {'pC1',1,'pC2',1,'pOB',2,'pR1',1,'pR2',1,'pR3',1,'pR4',1,'po1AS',1,'po2AS',1})
+%plotCOTREE_experimental(CT, {'pC1',1,'pC2',1,'pOB',1,'pR1',1,'pR3',1,'pR4',1,'pi1AS',1,'pi2AS',1});
+
+
+%plotCOTREE([])
+%plotCOTREE('abc')
+%plotCOTREE(CT, {''})
+%plotCOTREE(CT, {'wrongPlace',1})
+%plotCOTREE(CT, {'p1',3,'p2'})
+%plotCOTREE(CT, {'p1',3,'p2',4,'p3',Inf})
+%plotCOTREE_experimental_horizontal(CT)
+%plotCOTREE_experimental_horizontal(CT)
+%plotCOTREE_experimental(CT, {'pC1',1,'pC2',1,'pR1',1,'pR4',1,'pi1AS',1,'piCK',1,'po2AS',1,'poM2',1})
+

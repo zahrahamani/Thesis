@@ -1,16 +1,18 @@
-function plotCOTREE_horizontal(COTREE, startState)
-% plotCOTREE_horizontal  EXPERIMENTAL left-to-right reachability graph.
+function plotCOTREE_experimental_horizontal(COTREE, startState)
+% plotCOTREE_experimental_horizontal  EXPERIMENTAL left-to-right version of plotCOTREE.
 %
-%   plotCOTREE_horizontal(COTREE)
-%   plotCOTREE_horizontal(COTREE, startState)
+%   plotCOTREE_experimental_horizontal(COTREE)
+%   plotCOTREE_experimental_horizontal(COTREE, startState)
 %
-% Same inputs and behavior as plotCOTREE, except the tree is laid out
-% horizontally (root on the left, depth increases to the right).
+% Identical to plotCOTREE in every respect (inputs, COTREE parsing,
+% startState handling, BFS display cap, node labels, colors, transition
+% labels, stubs, legend and error handling), except the tree is laid out
+% horizontally: the root is on the left and depth increases to the right.
 %
 % See also plotCOTREE.
 
     if nargin < 1
-        disp('plotCOTREE_horizontal: missing COTREE input; usage: plotCOTREE_horizontal(COTREE, [startState]).');
+        disp('plotCOTREE_experimental_horizontal: missing COTREE input; usage: plotCOTREE_experimental_horizontal(COTREE, [startState]).');
         return;
     end
     if nargin < 2
@@ -27,44 +29,42 @@ function plotCOTREE_horizontal(COTREE, startState)
     end
 
     sel = iSelectSubtree(tree, startIdx, iDefaultMaxDisplayStates());
-    view = iBuildHorizontalPlotView(tree, sel);
+    view = iBuildPlotView(tree, sel);
     iDrawReachabilityFigure(tree, view, startIdx);
     iReportTruncation(tree.numStates, sel.count, iDefaultMaxDisplayStates());
 end
 
 % -------------------------------------------------------------------------
-% Shared logic (aligned with plotCOTREE.m; kept local for a safe experiment)
-% -------------------------------------------------------------------------
-
 function n = iDefaultMaxDisplayStates()
     n = 30;
 end
 
+% -------------------------------------------------------------------------
 function tree = iParseAndValidateCOTREE(COTREE, startState)
     tree = [];
     if isempty(COTREE)
-        disp('plotCOTREE_horizontal: COTREE is empty; no plot generated.');
+        disp('plotCOTREE_experimental_horizontal: COTREE is empty; no plot generated.');
         return;
     end
     if ~ismatrix(COTREE) || ~isnumeric(COTREE)
-        disp('plotCOTREE_horizontal: COTREE must be a numeric matrix returned by cotree; no plot generated.');
+        disp('plotCOTREE_experimental_horizontal: COTREE must be a numeric matrix returned by cotree; no plot generated.');
         return;
     end
     if ~isempty(startState) && ~iscell(startState)
-        disp('plotCOTREE_horizontal: startState must be a cell array, e.g., {''p2'',1,''p3'',1}; no plot generated.');
+        disp('plotCOTREE_experimental_horizontal: startState must be a cell array, e.g., {''p2'',1,''p3'',1}; no plot generated.');
         return;
     end
 
     [numStates, numCols] = size(COTREE);
     if numCols < 4
-        error('plotCOTREE_horizontal:InvalidCOTREEShape', ...
+        error('plotCOTREE_experimental_horizontal:InvalidCOTREEShape', ...
             'COTREE must have at least 4 columns.');
     end
 
     numPlaces = numCols - 3;
     parentState = COTREE(:, numPlaces + 2);
     if any(parentState < 0) || any(parentState > numStates) || any(mod(parentState, 1) ~= 0)
-        error('plotCOTREE_horizontal:InvalidParentState', ...
+        error('plotCOTREE_experimental_horizontal:InvalidParentState', ...
             'parent_state column must contain integer indices in [0..N].');
     end
 
@@ -77,18 +77,20 @@ function tree = iParseAndValidateCOTREE(COTREE, startState)
     tree.rootIdx = iFindRootIndex(tree);
 end
 
+% -------------------------------------------------------------------------
 function rootIdx = iFindRootIndex(tree)
     rootIdx = find(tree.stateType == double('R'), 1, 'first');
     if isempty(rootIdx)
         rootCandidates = find(tree.parentState == 0);
         if isempty(rootCandidates)
-            error('plotCOTREE_horizontal:MissingRoot', ...
+            error('plotCOTREE_experimental_horizontal:MissingRoot', ...
                 'Could not find a root state (type ''R'' or parent_state==0).');
         end
         rootIdx = rootCandidates(1);
     end
 end
 
+% -------------------------------------------------------------------------
 function startIdx = iResolveStartIndex(tree, startState, useStartState)
     if ~useStartState
         startIdx = tree.rootIdx;
@@ -99,18 +101,19 @@ function startIdx = iResolveStartIndex(tree, startState, useStartState)
         tree.markings, tree.stateType, startState, tree.numPlaces);
     if isempty(startIdx)
         if isempty(message)
-            disp('plotCOTREE_horizontal: startState not found in COTREE; no plot generated.');
+            disp('plotCOTREE_experimental_horizontal: startState not found in COTREE; no plot generated.');
         else
             disp(message);
         end
     end
 end
 
+% -------------------------------------------------------------------------
 function sel = iSelectSubtree(tree, startIdx, maxDisplayStates)
     keepMask = iBreadthFirstMask(tree.parentState, startIdx, tree.numStates, maxDisplayStates);
     selected = find(keepMask);
     if isempty(selected)
-        error('plotCOTREE_horizontal:EmptySelection', 'No states selected for plotting.');
+        error('plotCOTREE_experimental_horizontal:EmptySelection', 'No states selected for plotting.');
     end
 
     sel.indices = selected;
@@ -122,6 +125,7 @@ function sel = iSelectSubtree(tree, startIdx, maxDisplayStates)
     sel.hiddenSuccessor = iHiddenSuccessorMask(tree.parentState, selected, keepMask);
 end
 
+% -------------------------------------------------------------------------
 function keepMask = iBreadthFirstMask(parentState, startIdx, numStates, maxDisplayStates)
     keepMask = false(numStates, 1);
     queue = startIdx;
@@ -147,6 +151,7 @@ function keepMask = iBreadthFirstMask(parentState, startIdx, numStates, maxDispl
     end
 end
 
+% -------------------------------------------------------------------------
 function hiddenSuccessor = iHiddenSuccessorMask(parentState, selected, keepMask)
     hiddenSuccessor = false(numel(selected), 1);
     for i = 1:numel(selected)
@@ -155,10 +160,7 @@ function hiddenSuccessor = iHiddenSuccessorMask(parentState, selected, keepMask)
 end
 
 % -------------------------------------------------------------------------
-% Horizontal layout (differs from plotCOTREE)
-% -------------------------------------------------------------------------
-
-function view = iBuildHorizontalPlotView(tree, sel)
+function view = iBuildPlotView(tree, sel)
     mapOldToNew = zeros(tree.numStates, 1);
     mapOldToNew(sel.indices) = 1:sel.count;
 
@@ -170,28 +172,26 @@ function view = iBuildHorizontalPlotView(tree, sel)
     end
 
     depth = PNCT_depth(parent');
-    [ySpread, ~, h] = PNCT_treelay(parent', depth);
+    [spread, ~, h] = PNCT_treelay(parent', depth);
+    [boxAlong, boxAcross] = iNodeBoxSize(depth, h, tree.numPlaces, numel(parent));
 
     % Vertical plotCOTREE: x = sibling spread, y = depth (root at top).
     % Horizontal: x = depth (root at left), y = sibling spread.
-    view.x = (depth + 0.5) / (h + 1);
-    view.y = ySpread;
-    view.h = h;
-
-    [wSpread, hDepth] = iNodeBoxSize(depth, h, tree.numPlaces, numel(parent));
-    view.widths = min(hDepth, 0.08);
-    view.heights = wSpread;
-
     view.parent = parent;
     view.transition = sel.transition;
     view.type = sel.type;
     view.markings = sel.markings;
     view.hiddenSuccessor = sel.hiddenSuccessor;
+    view.x = (depth + 0.5) / (h + 1);
+    view.y = spread;
+    view.h = h;
     view.depth = depth;
+    view.widths = min(boxAcross, 0.08);
+    view.heights = boxAlong;
     view.stateNumbers = sel.indices(:);
-    view.numPlaces = tree.numPlaces;
 end
 
+% -------------------------------------------------------------------------
 function [widths, heights] = iNodeBoxSize(depth, treeHeight, numPlaces, numNodes)
     numnodes = 0;
     for lvl = 1:max(depth)
@@ -206,12 +206,9 @@ function [widths, heights] = iNodeBoxSize(depth, treeHeight, numPlaces, numNodes
 end
 
 % -------------------------------------------------------------------------
-% Drawing (horizontal stubs / labels; otherwise same as plotCOTREE)
-% -------------------------------------------------------------------------
-
 function iDrawReachabilityFigure(tree, view, startIdx)
-    fig = figure;
-    clf(fig);
+    fig = figure; %#ok<NASGU>
+    clf;
     hold on;
     axis([0 1 0 1]);
     ax = gca;
@@ -224,12 +221,12 @@ function iDrawReachabilityFigure(tree, view, startIdx)
     iDrawHiddenStubs(view);
     iDrawMarkingLabels(view);
     title([iPlaceTitle(tree.numPlaces), ' (horizontal, experimental)']);
-    text(0.02, 0.02, ['Depth = ', num2str(view.h)]);
-    iEnableStateHover(fig, ax, view);
+    text(0.02, 0.02, ['Height = ', num2str(view.h)]);
     hold off;
     iDrawLegend(ax);
 end
 
+% -------------------------------------------------------------------------
 function iDrawEdges(view)
     nonRoot = find(view.parent ~= 0);
     for k = 1:numel(nonRoot)
@@ -238,11 +235,11 @@ function iDrawEdges(view)
         plot([view.x(parent), view.x(child)], [view.y(parent), view.y(child)], 'r-');
         xt = (view.x(parent) + view.x(child)) / 2;
         yt = (view.y(parent) + view.y(child)) / 2;
-        text(xt, yt - 0.015, iTransitionString(view.transition(child)), ...
-            'Color', [0.7 0 0], 'HorizontalAlignment', 'center');
+        text(xt, yt + 0.012, iTransitionString(view.transition(child)), 'Color', [0.7 0 0]);
     end
 end
 
+% -------------------------------------------------------------------------
 function iDrawNodes(view)
     [Xb, Yb] = iBuildBoxes(view.x, view.y, view.widths, view.heights);
     colors = iNodeColors(view.type);
@@ -251,6 +248,7 @@ function iDrawNodes(view)
     end
 end
 
+% -------------------------------------------------------------------------
 function iDrawRootStub(view, startIdx, rootIdx)
     if startIdx == rootIdx
         return;
@@ -265,6 +263,7 @@ function iDrawRootStub(view, startIdx, rootIdx)
     plot([xLeft - stubLen, xLeft], [view.y(i), view.y(i)], 'r-', 'LineWidth', 1);
 end
 
+% -------------------------------------------------------------------------
 function iDrawHiddenStubs(view)
     hiddenNodes = find(view.hiddenSuccessor);
     for ii = 1:numel(hiddenNodes)
@@ -275,27 +274,35 @@ function iDrawHiddenStubs(view)
     end
 end
 
+% -------------------------------------------------------------------------
 function iDrawMarkingLabels(view)
     for i = 1:numel(view.parent)
-        label = iNodeDisplayLabel(view.markings(i, :), view.stateNumbers(i), view.numPlaces);
-        text(view.x(i), view.y(i), label, 'FontSize', 10, ...
-            'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle');
+        label = iStateLabel(view.stateNumbers(i), view.markings(i, :));
+        text(view.x(i) - length(label) * 0.0035, view.y(i), label, 'FontSize', 10);
     end
 end
 
+% -------------------------------------------------------------------------
+function label = iStateLabel(stateNum, marking)
+    % Supervisor-requested format: state number and marking together, e.g. "S15: 3p1 + 2p2".
+    label = ['S', num2str(stateNum), ': ', iMarkingString(marking)];
+end
+
+% -------------------------------------------------------------------------
 function iReportTruncation(numStates, displayedCount, maxDisplayStates)
     if displayedCount < numStates
-        disp(['plotCOTREE_horizontal: displaying ', num2str(displayedCount), ...
+        disp(['plotCOTREE_experimental_horizontal: displaying ', num2str(displayedCount), ...
               ' of ', num2str(numStates), ' states (cap = ', num2str(maxDisplayStates), ').']);
     end
 end
 
+% -------------------------------------------------------------------------
 function [stateIdx, message] = iFindStateByCellMarking(markings, stateType, startState, numPlaces)
     stateIdx = [];
     message = '';
 
     if mod(numel(startState), 2) ~= 0
-        message = 'plotCOTREE_horizontal: startState must contain place-token pairs; no plot generated.';
+        message = 'plotCOTREE_experimental_horizontal: startState must contain place-token pairs, e.g., {''p2'',1,''p3'',1}; no plot generated.';
         return;
     end
 
@@ -303,12 +310,12 @@ function [stateIdx, message] = iFindStateByCellMarking(markings, stateType, star
         query = cellState2vectorState(startState);
         query = query(:)';
     catch ME
-        message = ['plotCOTREE_horizontal: invalid startState (', ME.message, '); no plot generated.'];
+        message = ['plotCOTREE_experimental_horizontal: invalid startState (', ME.message, '); no plot generated.'];
         return;
     end
 
     if numel(query) ~= numPlaces
-        message = 'plotCOTREE_horizontal: startState does not match the number of places in COTREE; no plot generated.';
+        message = 'plotCOTREE_experimental_horizontal: startState does not match the number of places in COTREE; no plot generated.';
         return;
     end
 
@@ -334,6 +341,7 @@ function [stateIdx, message] = iFindStateByCellMarking(markings, stateType, star
     end
 end
 
+% -------------------------------------------------------------------------
 function [Xb, Yb] = iBuildBoxes(x, y, w, h)
     Xb = zeros(4, numel(x));
     Yb = zeros(4, numel(x));
@@ -343,6 +351,7 @@ function [Xb, Yb] = iBuildBoxes(x, y, w, h)
     end
 end
 
+% -------------------------------------------------------------------------
 function color = iNodeColors(typeCodes)
     color = zeros(numel(typeCodes), 3);
     for i = 1:numel(typeCodes)
@@ -359,89 +368,13 @@ function color = iNodeColors(typeCodes)
     end
 end
 
+% -------------------------------------------------------------------------
 function s = iMarkingString(m)
     s = markings_string(m);
     s = strrep(s, 'Inf', 'w');
 end
 
-function label = iNodeDisplayLabel(marking, stateNum, numPlaces)
-    fullLabel = iMarkingString(marking);
-    if iPreferStateNumberLabel(numPlaces, fullLabel)
-        label = ['S', num2str(stateNum)];
-    else
-        label = fullLabel;
-    end
-end
-
-function tf = iPreferStateNumberLabel(numPlaces, markingLabel)
-    tf = numPlaces > iLargePlaceCountThreshold() ...
-        || length(markingLabel) > iMaxMarkingLabelLength();
-end
-
-function n = iMaxMarkingLabelLength()
-    n = 30;
-end
-
-function n = iLargePlaceCountThreshold()
-    n = 10;
-end
-
-function s = iFullMarkingTooltip(marking)
-    s = ['State: ', iMarkingString(marking)];
-end
-
-function iEnableStateHover(fig, ax, view)
-    tipH = text(ax, NaN, NaN, '', 'Visible', 'off', ...
-        'BackgroundColor', [1 1 0.93], 'Margin', 4, ...
-        'EdgeColor', [0.45 0.45 0.45], 'FontSize', 9, ...
-        'Clipping', 'off', 'Tag', 'plotCOTREE_horizontal_hoverTip', ...
-        'HitTest', 'off', 'PickableParts', 'none');
-
-    markings = cell(numel(view.parent), 1);
-    for i = 1:numel(view.parent)
-        markings{i} = iFullMarkingTooltip(view.markings(i, :));
-    end
-
-    hoverData.view = view;
-    hoverData.markings = markings;
-    hoverData.tip = tipH;
-    hoverData.ax = ax;
-    setappdata(fig, 'plotCOTREE_horizontal_hoverData', hoverData);
-    set(fig, 'WindowButtonMotionFcn', @iOnStateHover);
-end
-
-function iOnStateHover(fig, ~)
-    data = getappdata(fig, 'plotCOTREE_horizontal_hoverData');
-    if isempty(data) || ~ishandle(data.ax) || ~ishandle(data.tip)
-        return;
-    end
-
-    cp = get(data.ax, 'CurrentPoint');
-    hit = iHitTestState(data.view, cp(1, 1), cp(1, 2));
-    if hit > 0
-        v = data.view;
-        xTip = v.x(hit) + v.widths(hit) * 0.55;
-        set(data.tip, 'Position', [xTip, v.y(hit), 0], ...
-            'String', data.markings{hit}, 'Visible', 'on');
-    else
-        set(data.tip, 'Visible', 'off');
-    end
-end
-
-function hit = iHitTestState(view, x, y)
-    hit = 0;
-    for i = 1:numel(view.parent)
-        inX = x >= view.x(i) - view.widths(i) / 2 ...
-            && x <= view.x(i) + view.widths(i) / 2;
-        inY = y >= view.y(i) - view.heights(i) / 2 ...
-            && y <= view.y(i) + view.heights(i) / 2;
-        if inX && inY
-            hit = i;
-            return;
-        end
-    end
-end
-
+% -------------------------------------------------------------------------
 function s = iTransitionString(transIdx)
     if transIdx <= 0
         s = '';
@@ -450,6 +383,7 @@ function s = iTransitionString(transIdx)
     s = tname(transIdx);
 end
 
+% -------------------------------------------------------------------------
 function t = iPlaceTitle(numPlaces)
     names = cell(1, numPlaces);
     for i = 1:numPlaces
@@ -458,6 +392,7 @@ function t = iPlaceTitle(numPlaces)
     t = ['Places: ', strjoin(names, ', ')];
 end
 
+% -------------------------------------------------------------------------
 function iDrawLegend(ax)
     % Compact translucent legend, flush to the right edge of the plot axes.
     axes(ax);
@@ -489,4 +424,3 @@ function iDrawLegend(ax)
             'Clipping', 'off');
     end
 end
-

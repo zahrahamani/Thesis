@@ -1,18 +1,18 @@
-function plotCOTREE_advanced(COTREE, startState)
-% plotCOTREE_advanced  Enhanced reachability graph with compact labels and hover.
+function plotCOTREE_experimental(COTREE, startState)
+% plotCOTREE_experimental  Enhanced reachability graph with compact labels and hover.
 %
-%   plotCOTREE_advanced(COTREE)
-%   plotCOTREE_advanced(COTREE, startState)
+%   plotCOTREE_experimental(COTREE)
+%   plotCOTREE_experimental(COTREE, startState)
 %
 % Same API and subtree selection as plotCOTREE, plus:
-%   - compact S# node labels for visually dense views,
+%   - compact S# node labels for long markings,
 %   - hover tooltip with full marking (State: ...),
 %   - for duplicate states, tooltip names the earlier matching state.
 %
 % See also plotCOTREE.
 
     if nargin < 1
-        disp('plotCOTREE_advanced: missing COTREE input; usage: plotCOTREE_advanced(COTREE, [startState]).');
+        disp('plotCOTREE_experimental: missing COTREE input; usage: plotCOTREE_experimental(COTREE, [startState]).');
         return;
     end
     if nargin < 2
@@ -42,28 +42,28 @@ end
 function tree = iParseAndValidateCOTREE(COTREE, startState)
     tree = [];
     if isempty(COTREE)
-        disp('plotCOTREE_advanced: COTREE is empty; no plot generated.');
+        disp('plotCOTREE_experimental: COTREE is empty; no plot generated.');
         return;
     end
     if ~ismatrix(COTREE) || ~isnumeric(COTREE)
-        disp('plotCOTREE_advanced: COTREE must be a numeric matrix returned by cotree; no plot generated.');
+        disp('plotCOTREE_experimental: COTREE must be a numeric matrix returned by cotree; no plot generated.');
         return;
     end
     if ~isempty(startState) && ~iscell(startState)
-        disp('plotCOTREE_advanced: startState must be a cell array, e.g., {''p2'',1,''p3'',1}; no plot generated.');
+        disp('plotCOTREE_experimental: startState must be a cell array, e.g., {''p2'',1,''p3'',1}; no plot generated.');
         return;
     end
 
     [numStates, numCols] = size(COTREE);
     if numCols < 4
-        error('plotCOTREE_advanced:InvalidCOTREEShape', ...
+        error('plotCOTREE_experimental:InvalidCOTREEShape', ...
             'COTREE must have at least 4 columns.');
     end
 
     numPlaces = numCols - 3;
     parentState = COTREE(:, numPlaces + 2);
     if any(parentState < 0) || any(parentState > numStates) || any(mod(parentState, 1) ~= 0)
-        error('plotCOTREE_advanced:InvalidParentState', ...
+        error('plotCOTREE_experimental:InvalidParentState', ...
             'parent_state column must contain integer indices in [0..N].');
     end
 
@@ -81,7 +81,7 @@ function rootIdx = iFindRootIndex(tree)
     if isempty(rootIdx)
         rootCandidates = find(tree.parentState == 0);
         if isempty(rootCandidates)
-            error('plotCOTREE_advanced:MissingRoot', ...
+            error('plotCOTREE_experimental:MissingRoot', ...
                 'Could not find a root state (type ''R'' or parent_state==0).');
         end
         rootIdx = rootCandidates(1);
@@ -98,7 +98,7 @@ function startIdx = iResolveStartIndex(tree, startState, useStartState)
         tree.markings, tree.stateType, startState, tree.numPlaces);
     if isempty(startIdx)
         if isempty(message)
-            disp('plotCOTREE_advanced: startState not found in COTREE; no plot generated.');
+            disp('plotCOTREE_experimental: startState not found in COTREE; no plot generated.');
         else
             disp(message);
         end
@@ -109,7 +109,7 @@ function sel = iSelectSubtree(tree, startIdx, maxDisplayStates)
     keepMask = iBreadthFirstMask(tree.parentState, startIdx, tree.numStates, maxDisplayStates);
     selected = find(keepMask);
     if isempty(selected)
-        error('plotCOTREE_advanced:EmptySelection', 'No states selected for plotting.');
+        error('plotCOTREE_experimental:EmptySelection', 'No states selected for plotting.');
     end
 
     sel.indices = selected;
@@ -212,7 +212,7 @@ function iDrawReachabilityFigure(tree, view, startIdx)
     iDrawRootStub(view, startIdx, tree.rootIdx);
     iDrawHiddenStubs(view);
     iDrawMarkingLabels(view);
-    title([iPlaceTitle(tree.numPlaces), ' (advanced)']);
+    title([iPlaceTitle(tree.numPlaces), ' (experimental)']);
     text(0.02, 0.02, ['Height = ', num2str(view.h)]);
     iEnableStateHover(fig, ax, view);
     hold off;
@@ -273,7 +273,7 @@ end
 
 function iReportTruncation(numStates, displayedCount, maxDisplayStates)
     if displayedCount < numStates
-        disp(['plotCOTREE_advanced: displaying ', num2str(displayedCount), ...
+        disp(['plotCOTREE_experimental: displaying ', num2str(displayedCount), ...
               ' of ', num2str(numStates), ' states (cap = ', num2str(maxDisplayStates), ').']);
     end
 end
@@ -283,7 +283,7 @@ function [stateIdx, message] = iFindStateByCellMarking(markings, stateType, star
     message = '';
 
     if mod(numel(startState), 2) ~= 0
-        message = 'plotCOTREE_advanced: startState must contain place-token pairs; no plot generated.';
+        message = 'plotCOTREE_experimental: startState must contain place-token pairs; no plot generated.';
         return;
     end
 
@@ -291,12 +291,12 @@ function [stateIdx, message] = iFindStateByCellMarking(markings, stateType, star
         query = cellState2vectorState(startState);
         query = query(:)';
     catch ME
-        message = ['plotCOTREE_advanced: invalid startState (', ME.message, '); no plot generated.'];
+        message = ['plotCOTREE_experimental: invalid startState (', ME.message, '); no plot generated.'];
         return;
     end
 
     if numel(query) ~= numPlaces
-        message = 'plotCOTREE_advanced: startState does not match the number of places in COTREE; no plot generated.';
+        message = 'plotCOTREE_experimental: startState does not match the number of places in COTREE; no plot generated.';
         return;
     end
 
@@ -352,35 +352,23 @@ function s = iMarkingString(m)
     s = strrep(s, 'Inf', 'w');
 end
 
-function label = iNodeDisplayLabel(marking, stateNum, numPlaces, numDisplayed)
-    fullLabel = iMarkingString(marking);
-    if iPreferStateNumberLabel(numPlaces, fullLabel, numDisplayed)
+function label = iNodeDisplayLabel(marking, stateNum, numPlaces, numDisplayed) %#ok<INUSD>
+    % Short marking: show "S15: 3p1 + 2p2"; long marking: show "S15" only
+    % (full marking remains available on hover).
+    fullMarking = iMarkingString(marking);
+    if length(fullMarking) > iMaxMarkingLabelLength()
         label = ['S', num2str(stateNum)];
     else
-        label = fullLabel;
+        label = ['S', num2str(stateNum), ': ', fullMarking];
     end
-end
-
-function tf = iPreferStateNumberLabel(numPlaces, markingLabel, numDisplayed)
-    tf = numDisplayed > iDenseSubtreeNodeThreshold() ...
-        && (numPlaces > iLargePlaceCountThreshold() ...
-            || length(markingLabel) > iMaxMarkingLabelLength());
-end
-
-function n = iDenseSubtreeNodeThreshold()
-    n = 15;
 end
 
 function n = iMaxMarkingLabelLength()
     n = 30;
 end
 
-function n = iLargePlaceCountThreshold()
-    n = 10;
-end
-
 function s = iStateTooltip(marking, stateNum, stateType, allMarkings, numPlaces)
-    s = ['State: ', iMarkingString(marking)];
+    s = ['S', num2str(stateNum), ': ', iMarkingString(marking)];
     if stateType ~= double('D')
         return;
     end
@@ -415,7 +403,7 @@ function iEnableStateHover(fig, ax, view)
     tipH = text(ax, NaN, NaN, '', 'Visible', 'off', ...
         'BackgroundColor', [1 1 0.93], 'Margin', 4, ...
         'EdgeColor', [0.45 0.45 0.45], 'FontSize', 9, ...
-        'Clipping', 'off', 'Tag', 'plotCOTREE_advanced_hoverTip', ...
+        'Clipping', 'off', 'Tag', 'plotCOTREE_experimental_hoverTip', ...
         'HitTest', 'off', 'PickableParts', 'none');
 
     tooltips = cell(numel(view.parent), 1);
@@ -428,12 +416,12 @@ function iEnableStateHover(fig, ax, view)
     hoverData.tooltips = tooltips;
     hoverData.tip = tipH;
     hoverData.ax = ax;
-    setappdata(fig, 'plotCOTREE_advanced_hoverData', hoverData);
+    setappdata(fig, 'plotCOTREE_experimental_hoverData', hoverData);
     set(fig, 'WindowButtonMotionFcn', @iOnStateHover);
 end
 
 function iOnStateHover(fig, ~)
-    data = getappdata(fig, 'plotCOTREE_advanced_hoverData');
+    data = getappdata(fig, 'plotCOTREE_experimental_hoverData');
     if isempty(data) || ~ishandle(data.ax) || ~ishandle(data.tip)
         return;
     end

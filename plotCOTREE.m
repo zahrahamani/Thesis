@@ -18,7 +18,6 @@ function plotCOTREE(COTREE, startState)
 %   - Display is capped (see iDefaultMaxDisplayStates).
 %   - Red stubs mark nodes with hidden successors or non-initial roots.
 %
-% See also plotCOTREE_advanced.
 
     if nargin < 1
         disp('plotCOTREE: missing COTREE input; usage: plotCOTREE(COTREE, [startState]).');
@@ -195,6 +194,7 @@ function view = iBuildPlotView(tree, sel)
     view.depth = depth;
     view.widths = widths;
     view.heights = heights;
+    view.stateNumbers = sel.indices(:);
 end
 
 % -------------------------------------------------------------------------
@@ -283,9 +283,15 @@ end
 % -------------------------------------------------------------------------
 function iDrawMarkingLabels(view)
     for i = 1:numel(view.parent)
-        label = iMarkingString(view.markings(i, :));
+        label = iStateLabel(view.stateNumbers(i), view.markings(i, :));
         text(view.x(i) - length(label) * 0.0035, view.y(i), label, 'FontSize', 10);
     end
+end
+
+% -------------------------------------------------------------------------
+function label = iStateLabel(stateNum, marking)
+    % Supervisor-requested format: state number and marking together, e.g. "S15: 3p1 + 2p2".
+    label = ['S', num2str(stateNum), ': ', iMarkingString(marking)];
 end
 
 % -------------------------------------------------------------------------

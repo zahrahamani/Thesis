@@ -5,4 +5,7 @@ clear all; clc;
 pns = pnstruct('cotree_09_pdf');
 dyn.m0 = {'p1',2, 'p4',1};
 pni = initialdynamics(pns, dyn);
-cotree(pni, 1, 1); % cotree: plot graphically, as well as ASCII text
+CT = cotree(pni, 0, 0); % cotree: plot graphically, as well as ASCII text
+plotCOTREE(CT)
+%plotCOTREE_experimental_horizontal(CT)
+

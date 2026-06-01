@@ -5,5 +5,6 @@ clear all; clc; close all;
 spng = pnstruct('cotree_10D_pdf');
 dyn.m0 = {'p1',3};
 pni = initialdynamics(spng, dyn);
-COTREE = cotree(pni, 1, 1);
+COTREE = cotree(pni, 0, 0);
+
 plotCOTREE(COTREE)
